@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "job-record",
+  "description": "单条岗位记录标准结构。Stage 1 采集产出，Stage 2 清洗后回填 quality / freshness / authenticity / match。",
+  "type": "object",
+  "required": ["job_id", "company", "title", "city", "url", "posted_raw", "source_type", "collected_at"],
+  "properties": {
+    "job_id": {
+      "type": "string",
+      "description": "company_canonical|title_canonical|city 的稳定指纹，用于跨源去重"
+    },
+    "company": { "type": "string", "description": "公司名，同批次内保持一致" },
+    "company_type": {
+      "type": "string",
+      "enum": ["大厂", "创业公司", "外企", "国企央企", "外包交付", "传统行业", "未知"],
+      "description": "用于第 4 层公司语境判断"
+    },
+    "title": { "type": "string", "description": "原始岗位标题，保留营销词以便识别" },
+    "title_normalized": { "type": "string", "description": "归一后的岗位名" },
+    "job_family": { "type": "string", "description": "岗位族，如 AI应用产品经理" },
+    "job_subtype": {
+      "type": "string",
+      "enum": ["平台型", "应用型", "商业化型", "交付型", "其他"],
+      "description": "族内亚型，决定简历叙事重点"
+    },
+    "level": { "type": "string", "enum": ["P1-P3", "P4-P5", "P6+", "M", "未知"] },
+    "city": { "type": "string" },
+    "work_mode": { "type": "string", "enum": ["现场", "混合", "远程", "未知"] },
+    "salary_raw": { "type": "string", "description": "原始薪资文本" },
+    "salary_min_k": { "type": ["number", "null"], "description": "折算月薪下限，单位 K" },
+    "salary_max_k": { "type": ["number", "null"] },
+    "salary_months": { "type": ["integer", "null"], "description": "几薪" },
+    "url": { "type": "string", "description": "可访问的原始链接，缺失不入库" },
+    "sources": {
+      "type": "array",
+      "description": "同一岗位在多个平台的来源，合并时累加，不去重链接",
+      "items": {
+        "type": "object",
+        "properties": {
+          "platform": { "type": "string" },
+          "url": { "type": "string" }
+        }
+      }
+    },
+    "source_type": {
+      "type": "string",
+      "enum": ["official_careers", "ats", "campus_aggregator", "gov_platform", "job_board", "search", "referral"],
+      "description": "S/A/B/C 分层对应：official_careers/ats 为 S 级"
+    },
+    "posted_raw": { "type": "string", "description": "发布时间原文，如 3天前 / 2026-09-12" },
+    "posted_at": { "type": ["string", "null"], "description": "换算后的 YYYY-MM-DD" },
+    "freshness": { "type": "string", "enum": ["fresh", "normal", "stale", "aged", "unknown"] },
+    "responsibilities": { "type": "array", "items": { "type": "string" } },
+    "requirements": { "type": "array", "items": { "type": "string" } },
+    "benefits": { "type": "array", "items": { "type": "string" } },
+    "team_info": { "type": ["string", "null"], "description": "团队规模、汇报线、协作方等，Q3 判定关键" },
+    "business_context": { "type": ["string", "null"], "description": "JD 中的公司/业务背景描述原文" },
+    "quality": {
+      "type": "string",
+      "enum": ["Q0", "Q1", "Q2", "Q3"],
+      "description": "Q0 丢弃；Q1 仅市场统计；Q2 可匹配；Q3 可深解"
+    },
+    "authenticity": {
+      "type": "string",
+      "enum": ["verified", "likely", "suspect", "fake"]
+    },
+    "ghost_suspect": { "type": "boolean", "description": "长期挂岗/人才池嫌疑" },
+    "match": {
+      "type": ["object", "null"],
+      "properties": {
+        "score": { "type": "number", "minimum": 0, "maximum": 100 },
+        "tier": { "type": "string", "enum": ["主攻", "可试", "放弃"] },
+        "gate": { "type": "string", "enum": ["pass", "warn", "blocked"] },
+        "covered_clusters": { "type": "array", "items": { "type": "string" } },
+        "missing_clusters": { "type": "array", "items": { "type": "string" } },
+        "reason_codes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["EXP_OVER", "DOMAIN_MISS", "GATE_FAIL", "STALE", "SUSPECT", "LEVEL_MISMATCH"]
+          }
+        },
+        "evidence": {
+          "type": "array",
+          "description": "匹配证据，必须指向用户简历/项目库中的具体条目",
+          "items": { "type": "string" }
+        },
+        "rationale": { "type": "string", "description": "一句话匹配理由" }
+      }
+    },
+    "notes": { "type": ["string", "null"], "description": "剔除原因、异常信号、待核实项" },
+    "collected_at": { "type": "string", "description": "采集时间 ISO 8601" }
+  }
+}
